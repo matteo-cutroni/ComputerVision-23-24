@@ -2,40 +2,53 @@ from ultralytics import YOLO
 import cv2 as cv
 from sklearn.cluster import KMeans
 import numpy as np
+from matplotlib import pyplot as plt
 
 model = YOLO("yolo-Weights/yolov9e.pt") 
 
-results = model.track("barella.mov", save=True, stream=True)
+cap = cv.VideoCapture('barella.mov')
 
-for frame, result in enumerate(results):
-    histograms = []
-    players_hist_dict = {}
-    im = result.orig_img
-    for i, xywh in enumerate(result.boxes.xywh):
-        x, y, w, h = [int(xywh[j]) for j in range(4)]
-        left = int(x-w/2)
-        top = int(y-h/2)
-        crop = result.orig_img[top:top+h, left:left+w]
+while cap.isOpened():
+    success, frame = cap.read()
 
-        hist = cv.calcHist([crop], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+    if success:
+        results = model.track(frame, persist=True)
 
-        players_hist_dict[result.boxes.id[i]] = hist.flatten()
-        histograms.append(hist.flatten())
+        for i, xywh in enumerate(results[0].boxes.xywh):
+            x, y, w, h = [int(xywh[j]) for j in range(4)]
+            left = int(x-w/2)
+            top = int(y-h/2)
+            crop = results[0].orig_img[top:top+h, left:left+w]
 
-    histograms = np.array(histograms)
-    print(histograms.shape)
-    kmeans = KMeans(n_clusters=3, init='k-means++', n_init=1)
-    kmeans.fit(histograms)
+            # prendo solo parte alta (per prendere il colore della maglietta)
+            top_crop = crop[:int(crop.shape[0]/2), :]
 
-    
-    for key, value in players_hist_dict.items():
-        value = np.array(value.reshape(1, -1))
-        player_team = kmeans.predict(value)
-        team_hist = kmeans.cluster_centers_[player_team]
+            # modifico in array 2d diviso per colori di pixel
+            flat_crop = top_crop.reshape(-1, 3)
+
+            kmeans = KMeans(n_clusters=2, init='k-means++', n_init=1)
+            kmeans.fit(flat_crop)
+
+            labels = kmeans.labels_
+
+            # il colore della maglietta è quello della label meno presente
+            tot = sum(labels)
+            if tot > flat_crop.shape[0]/2:
+                player_color = kmeans.cluster_centers_[0]
+            else:
+                player_color = kmeans.cluster_centers_[1]
+
+            cv.rectangle(frame, (left, top), (left+w, top+h), player_color, 2)
+            
+
+        cv.imshow('bboxes', frame)
 
 
+        if cv.waitKey(1) & 0xFF == ord("q"):
+            break
+    else:
+        break
 
-
-
-
+cap.release()
+cv.destroyAllWindows()
     
