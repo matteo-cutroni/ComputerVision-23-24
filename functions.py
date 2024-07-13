@@ -68,5 +68,39 @@ def assign_team(frame, results, model, player_color, team_colors, cap):
 
 
 
-def top_view():
-    return
+def camera_movement(old_frame, frame):
+    min_distance = 5
+    cam_xy = [0,0]
+
+    old_gray = cv.cvtColor(old_frame, cv.COLOR_BGR2GRAY)
+    p0 = cv.goodFeaturesToTrack(old_gray, maxCorners=100, qualityLevel=0.3, minDistance=3, blockSize=7)
+
+
+
+    frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    p1, st, err = cv.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, winSize=(15,15), maxLevel=2, criteria=(cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
+
+    if p1 is not None:
+        good_new = p1[st==1]
+        good_old = p0[st==1]
+
+    max_distance = 0
+    cam_x, cam_y = 0,0
+
+    for (new, old) in zip(good_new, good_old):
+        new_point = new.ravel()
+        old_point = old.ravel()
+
+        distance = np.linalg.norm(new_point - old_point)
+        
+        if distance > max_distance:
+            max_distance = distance
+
+            cam_x = new_point[0] - old_point[0]
+            cam_y = new_point[1] - old_point[1]
+
+    if max_distance> min_distance:
+        cam_xy = [cam_x, cam_y]
+
+
+    return cam_xy
