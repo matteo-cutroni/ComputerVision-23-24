@@ -4,11 +4,11 @@ import numpy as np
 
 def assign_team(frame, results, model, player_color, team_colors, cap):
     for i, xywh in enumerate(results[0].boxes.xywh):
+        
         # operazione da fare solo per le persone
         if model.names[int(results[0].boxes.cls[i])] != 'person':
-
-            print(f'\n\n Ball Detected?\n tracked a {model.names[int(results[0].boxes.cls[i])]} at frame: {cap.get(cv.CAP_PROP_POS_FRAMES)}\n\n')
             continue
+
         # il colore è assegnato solo a nuovi id
         if int(results[0].boxes.id[i]) in player_color:
             continue
@@ -69,12 +69,17 @@ def assign_team(frame, results, model, player_color, team_colors, cap):
 
 
 def camera_movement(old_frame, frame):
-    min_distance = 5
+    min_distance = 20
     cam_xy = [0,0]
 
     old_gray = cv.cvtColor(old_frame, cv.COLOR_BGR2GRAY)
-    p0 = cv.goodFeaturesToTrack(old_gray, maxCorners=100, qualityLevel=0.3, minDistance=3, blockSize=7)
 
+    mask_features = np.zeros_like(old_gray)
+
+    mask_features[:,:20] = 1
+    mask_features[:,-20:] = 1
+
+    p0 = cv.goodFeaturesToTrack(old_gray, maxCorners=100, qualityLevel=0.3, minDistance=3, blockSize=7, mask=mask_features)
 
 
     frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
@@ -104,3 +109,17 @@ def camera_movement(old_frame, frame):
 
 
     return cam_xy
+
+
+def get_player_pos(results, cam_xy, transform):
+    transformed_positions = {}
+
+    for i, xywh in enumerate(results[0].boxes.xywh):
+        x, y, w, h = [int(xywh[j]) for j in range(4)]
+
+        player_position = np.array([(x+h)-cam_xy[0], (y+w/2)-cam_xy[1]]).reshape(-1,1,2)
+        tran_pos = cv.perspectiveTransform(player_position, transform).reshape(-1,2)
+
+        transformed_positions[results[0].boxes.id[i]] = tran_pos
+
+    return transformed_positions
