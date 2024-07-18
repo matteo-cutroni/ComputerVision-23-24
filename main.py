@@ -1,10 +1,7 @@
 from ultralytics import YOLO
 import cv2 as cv
-from sklearn.cluster import KMeans
 import numpy as np
-from matplotlib import pyplot as plt
-import math
-from functions import assign_team, camera_movement, show_birdview, get_player_pos
+from functions import assign_team, camera_movement, get_player_pos
 
 model = YOLO("yolo-Weights/yolov9e.pt") 
 

@@ -117,7 +117,9 @@ def get_player_pos(results, cam_xy, transform):
     for i, xywh in enumerate(results[0].boxes.xywh):
         x, y, w, h = [int(xywh[j]) for j in range(4)]
 
-        player_position = np.array([(x+h)-cam_xy[0], (y+w/2)-cam_xy[1]]).reshape(-1,1,2)
+        left = int(x-w/2)
+        top = int(y-h/2)
+        player_position = np.array([(left+w/2)-cam_xy[0], (top+h)-cam_xy[1]]).reshape(-1,1,2)
         tran_pos = cv.perspectiveTransform(player_position, transform).reshape(-1,2)
 
         transformed_positions[results[0].boxes.id[i]] = tran_pos
